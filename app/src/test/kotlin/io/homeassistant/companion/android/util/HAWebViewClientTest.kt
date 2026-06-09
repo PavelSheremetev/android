@@ -2,6 +2,7 @@ package io.homeassistant.companion.android.util
 
 import android.net.http.SslError
 import android.webkit.HttpAuthHandler
+import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -79,8 +80,18 @@ class HAWebViewClientTest {
     }
 
     @Test
-    fun `Given SSL_UNTRUSTED error when onReceivedSslError then emits AuthenticationError`() {
-        testSslError(SslError.SSL_UNTRUSTED, commonR.string.webview_error_SSL_UNTRUSTED)
+    fun `Given SSL_UNTRUSTED error when onReceivedSslError then proceeds and does not emit error`() {
+        val details = "SSL Error: ${SslError.SSL_UNTRUSTED}"
+        val sslError = mockk<SslError> {
+            every { this@mockk.primaryError } returns SslError.SSL_UNTRUSTED
+            every { this@mockk.toString() } returns details
+        }
+        val handler = mockk<SslErrorHandler>(relaxed = true)
+
+        webViewClient.onReceivedSslError(null, handler, sslError)
+
+        io.mockk.verify { handler.proceed() }
+        assertEquals(null, capturedError)
     }
 
     @Test

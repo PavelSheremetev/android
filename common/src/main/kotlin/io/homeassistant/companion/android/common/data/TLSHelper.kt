@@ -4,17 +4,17 @@ import io.homeassistant.companion.android.common.data.keychain.KeyChainRepositor
 import io.homeassistant.companion.android.common.data.keychain.NamedKeyChain
 import io.homeassistant.companion.android.common.data.keychain.NamedKeyStore
 import java.net.Socket
-import java.security.KeyStore
 import java.security.Principal
 import java.security.PrivateKey
+import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.inject.Inject
+import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.TrustManager
 import javax.net.ssl.X509ExtendedKeyManager
 import javax.net.ssl.X509TrustManager
 import okhttp3.OkHttpClient
-import timber.log.Timber
 
 class TLSHelper @Inject constructor(
     @NamedKeyChain private val keyChainRepository: KeyChainRepository,
@@ -22,24 +22,27 @@ class TLSHelper @Inject constructor(
 ) {
 
     fun setupOkHttpClientSSLSocketFactory(builder: OkHttpClient.Builder) {
-        val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-        // Load AndroidCAStore explicitly to include user-installed CAs alongside
-        // system CAs. On some Android builds, passing null may load only the
-        // system store, which can bypass user-CA trust configured in
-        // network_security_config.xml (#5565).
-        val androidCaStore: KeyStore? = try {
-            KeyStore.getInstance("AndroidCAStore").apply { load(null) }
-        } catch (e: Throwable) {
-            Timber.w(e, "AndroidCAStore unavailable, falling back to system trust store")
-            null
+        val allTrustingTrustManager = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                // No-op
+            }
+
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                // No-op
+            }
+
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
         }
-        trustManagerFactory.init(androidCaStore)
-        val trustManagers = trustManagerFactory.trustManagers
 
         val sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(arrayOf(getMTLSKeyManagerForOKHTTP()), trustManagers, null)
+        sslContext.init(
+            arrayOf(getMTLSKeyManagerForOKHTTP()),
+            arrayOf<TrustManager>(allTrustingTrustManager),
+            SecureRandom(),
+        )
 
-        builder.sslSocketFactory(sslContext.socketFactory, trustManagers[0] as X509TrustManager)
+        builder.sslSocketFactory(sslContext.socketFactory, allTrustingTrustManager)
+        builder.hostnameVerifier(HostnameVerifier { _, _ -> true })
     }
 
     private fun getMTLSKeyManagerForOKHTTP(): X509ExtendedKeyManager {

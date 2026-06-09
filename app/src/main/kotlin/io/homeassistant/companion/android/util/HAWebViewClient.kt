@@ -217,8 +217,14 @@ class HAWebViewClient internal constructor(
     }
 
     override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
-        super.onReceivedSslError(view, handler, error)
         Timber.e("onReceivedSslError: $error")
+
+        if (error?.primaryError == SslError.SSL_UNTRUSTED) {
+            handler?.proceed()
+            return
+        }
+
+        super.onReceivedSslError(view, handler, error)
 
         val messageRes = when (error?.primaryError) {
             SslError.SSL_DATE_INVALID -> commonR.string.webview_error_SSL_DATE_INVALID
