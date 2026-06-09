@@ -197,7 +197,7 @@ internal class PrefsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun isFullScreenEnabled(): Boolean {
-        return localStorage().getBoolean(PREF_FULLSCREEN_ENABLED)
+        return localStorage().getBooleanOrNull(PREF_FULLSCREEN_ENABLED) ?: true
     }
 
     override suspend fun setFullScreenEnabled(enabled: Boolean) {

@@ -145,6 +145,7 @@ private fun WebView.defaultSettings() {
         domStorageEnabled = true
         // https://github.com/home-assistant/android/pull/2252
         displayZoomControls = false
+        mediaPlaybackRequiresUserGesture = false
         userAgentString += " ${HomeAssistantApis.USER_AGENT_STRING}"
     }
     // Set WebView background color to transparent, so that the theme of the android activity has control over it.
