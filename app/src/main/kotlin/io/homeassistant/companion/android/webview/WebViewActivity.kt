@@ -583,6 +583,10 @@ class WebViewActivity :
 
                 override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
                     Timber.e("onReceivedSslError: $error")
+                    if (error?.primaryError == SslError.SSL_UNTRUSTED) {
+                        handler?.proceed()
+                        return
+                    }
                     showError(
                         ErrorType.SSL,
                         error,
@@ -1857,6 +1861,10 @@ class WebViewActivity :
                     }
                 }
             } else if (errorType == ErrorType.SSL) {
+                if (error?.primaryError == SslError.SSL_UNTRUSTED) {
+                    isShowingError = false
+                    return@launch
+                }
                 if (description != null) {
                     alert.setMessage(getString(commonR.string.webview_error_description) + " " + description)
                 } else if (error!!.primaryError == SslError.SSL_DATE_INVALID) {
